@@ -1,19 +1,26 @@
-﻿using Microsoft.Owin.Security;
-using Microsoft.Owin.Security.OAuth;
-using Microsoft.Owin.Testing;
-using Newtonsoft.Json;
-using Owin;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.Http;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using Xunit;
-
-namespace RimDev.Stuntman.Core.Tests
+﻿namespace RimDev.Stuntman.Core.Tests
 {
+    using Newtonsoft.Json;
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Net;
+    using System.Net.Http;
+    using System.Security.Claims;
+    using System.Threading.Tasks;
+    using Xunit;
+    using RimDev.Stuntman.Core;
+#if NET451
+    using Microsoft.Owin.Security;
+    using Microsoft.Owin.Security.OAuth;
+    using Microsoft.Owin.Testing;
+    using Owin;
+    using RimDev.Stuntman.AspNet;
+#elif NETSTANDARD1_4
+    using Microsoft.AspNetCore.TestHost;
+    using RimDev.Stuntman.AspNetCore;
+#endif
+
     public class IAppBuilderExtensionsTests
     {
         public class UseStuntmanExtensionMethod

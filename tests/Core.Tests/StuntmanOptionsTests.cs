@@ -1,11 +1,17 @@
-﻿using Microsoft.Owin.Testing;
-using System.Linq;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using Xunit;
-
-namespace RimDev.Stuntman.Core.Tests
+﻿namespace RimDev.Stuntman.Core.Tests
 {
+    using System.Linq;
+    using System.Security.Claims;
+    using System.Threading.Tasks;
+    using Xunit;
+#if NET451
+    using Microsoft.Owin.Testing;
+    using RimDev.Stuntman.AspNet;
+#elif NETSTANDARD1_4
+    using Microsoft.AspNetCore.TestHost;
+    using RimDev.Stuntman.AspNetCore;
+#endif
+
     public partial class StuntmanOptionsTests
     {
         public partial class AddUsersFromJsonMethod
