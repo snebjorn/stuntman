@@ -3,7 +3,7 @@ using Newtonsoft.Json.Linq;
 using System;
 using System.Security.Claims;
 
-namespace RimDev.Stuntman.Core
+namespace RimDev.Stuntman.Shared
 {
     public class StuntmanClaimConverter : JsonConverter
     {

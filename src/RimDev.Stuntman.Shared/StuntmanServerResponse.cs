@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace RimDev.Stuntman.Core
+namespace RimDev.Stuntman.Shared
 {
     public class StuntmanServerResponse
     {

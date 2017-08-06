@@ -1,33 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Authentication;
-using Newtonsoft.Json;
-using RimDev.Stuntman.Shared;
-
-namespace RimDev.Stuntman.AspNetCore
+﻿namespace RimDev.Stuntman.AspNet
 {
-    public static class IApplicationBuilderExtensions
+    using System;
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Net;
+    using System.Security.Claims;
+    using System.Text;
+    using System.Threading.Tasks;
+    using Owin;
+    using Microsoft.Owin;
+    using Microsoft.Owin.Security;
+    using Microsoft.Owin.Security.Cookies;
+    using Microsoft.Owin.Security.OAuth;
+    using Newtonsoft.Json;
+    using RimDev.Stuntman.Shared;
+
+    public static class IAppBuilderExtensions
     {
-        public static void UseStuntman(this IApplicationBuilder app, StuntmanOptions options)
+        /// <summary>
+        /// Enable Stuntman on this application.
+        /// </summary>
+        public static void UseStuntman(this IAppBuilder app, StuntmanOptions options)
         {
             if (options.AllowBearerTokenAuthentication)
             {
-                app.UseJwtBearerAuthentication(new JwtBearerOptions
+                app.UseOAuthBearerAuthentication(new OAuthBearerAuthenticationOptions()
                 {
-                    AuthenticationScheme = Constants.StuntmanAuthenticationType,
-                    Events = new JwtBearerEvents()
-                    {
-                        OnMessageReceived = context => StuntmanOnMessageReceived(options, context),
-                    }
+                    AuthenticationType = Constants.StuntmanAuthenticationType,
+                    Provider = new StuntmanOAuthBearerProvider(options),
+                    AccessTokenFormat = new StuntmanOAuthAccessTokenFormat()
                 });
             }
 
@@ -35,7 +36,7 @@ namespace RimDev.Stuntman.AspNetCore
             {
                 app.UseCookieAuthentication(new CookieAuthenticationOptions
                 {
-                    AuthenticationScheme = Constants.StuntmanAuthenticationType,
+                    AuthenticationType = Constants.StuntmanAuthenticationType,
                     LoginPath = new PathString(options.SignInUri),
                     LogoutPath = new PathString(options.SignOutUri),
                     ReturnUrlParameter = Constants.StuntmanOptions.ReturnUrlQueryStringKey,
@@ -74,11 +75,10 @@ namespace RimDev.Stuntman.AspNetCore
                             claims.AddRange(user.Claims);
 
                             var identity = new ClaimsIdentity(claims, Constants.StuntmanAuthenticationType);
-                            var principal = new ClaimsPrincipal(identity);
 
                             var authManager = context.Authentication;
 
-                            await authManager.SignInAsync(Constants.StuntmanAuthenticationType, principal);
+                            authManager.SignIn(identity);
 
                             await next.Invoke();
                         }
@@ -89,12 +89,12 @@ namespace RimDev.Stuntman.AspNetCore
 
                 app.Map(options.SignOutUri, signout =>
                 {
-                    signout.Use(async (context, next) =>
+                    signout.Use((context, next) =>
                     {
                         var authManager = context.Authentication;
-                        await authManager.SignOutAsync(Constants.StuntmanAuthenticationType);
+                        authManager.SignOut(Constants.StuntmanAuthenticationType);
 
-                        await next.Invoke();
+                        return next.Invoke();
                     });
 
                     RedirectToReturnUrl(signout);
@@ -117,9 +117,8 @@ namespace RimDev.Stuntman.AspNetCore
             }
         }
 
-
         private static string GetUsersLoginUI(
-            HttpContext context,
+            IOwinContext context,
             StuntmanOptions options)
         {
             var usersHtml = new StringBuilder();
@@ -134,7 +133,7 @@ namespace RimDev.Stuntman.AspNetCore
             return usersHtml.ToString();
         }
 
-        private static void RedirectToReturnUrl(IApplicationBuilder app)
+        private static void RedirectToReturnUrl(IAppBuilder app)
         {
             app.Run(context =>
             {
@@ -151,7 +150,7 @@ namespace RimDev.Stuntman.AspNetCore
                         "ReturnUrl was not specified via query string or Referer header.");
                 }
 
-                context.Response.Headers.Add("Location", returnUrl);
+                context.Response.Headers.Add("Location", new[] { returnUrl });
 
                 context.Response.StatusCode = 302;
 
@@ -159,8 +158,8 @@ namespace RimDev.Stuntman.AspNetCore
             });
         }
 
-        private static async void ShowLoginUI(
-            HttpContext context,
+        private static void ShowLoginUI(
+            IOwinContext context,
             StuntmanOptions options)
         {
             context.Response.ContentType = "text/html";
@@ -170,7 +169,7 @@ namespace RimDev.Stuntman.AspNetCore
             var logoForInlining = Resources.GetLogoForInlining();
             var usersHtml = GetUsersLoginUI(context, options);
 
-            await context.Response.WriteAsync($@"
+            context.Response.Write($@"
 <!DOCTYPE html>
 <html>
     <head>
@@ -192,77 +191,102 @@ namespace RimDev.Stuntman.AspNetCore
 </html>");
         }
 
-        private static async Task StuntmanOnMessageReceived(
-            StuntmanOptions options,
-            MessageReceivedContext context)
+        private class StuntmanOAuthBearerProvider : OAuthBearerAuthenticationProvider
         {
-            var authorizationBearerToken = context.HttpContext.Request.Headers["Authorization"];
-
-            if (string.IsNullOrWhiteSpace(authorizationBearerToken))
+            public StuntmanOAuthBearerProvider(StuntmanOptions options)
             {
-                context.Ticket = null;
-                context.SkipToNextMiddleware();
-                return;
+                this.options = options;
             }
-            else
+
+            private readonly StuntmanOptions options;
+
+            public override Task ValidateIdentity(OAuthValidateIdentityContext context)
             {
-                var authorizationBearerTokenParts = authorizationBearerToken.ToString().Split(' ');
+                var authorizationBearerToken = context.Request.Headers["Authorization"];
 
-                var accessToken = authorizationBearerTokenParts
-                    .LastOrDefault();
-
-                var claims = new List<Claim>();
-                StuntmanUser user = null;
-
-                if (authorizationBearerTokenParts.Count() != 2 ||
-                    string.IsNullOrWhiteSpace(accessToken))
+                if (string.IsNullOrWhiteSpace(authorizationBearerToken))
                 {
-                    context.HttpContext.Response.StatusCode = 400;
-                    await context.HttpContext.Response.WriteAsync(
-                        "Authorization header is not in correct format.");
+                    context.Rejected();
 
-                    context.Ticket = null;
-                    context.SkipToNextMiddleware();
-                    return;
+                    return Task.FromResult(false);
                 }
                 else
                 {
-                    user = options.Users
-                        .Where(x => x.AccessToken == accessToken)
-                        .FirstOrDefault();
+                    var authorizationBearerTokenParts = authorizationBearerToken
+                        .Split(' ');
 
-                    if (user == null)
+                    var accessToken = authorizationBearerTokenParts
+                        .LastOrDefault();
+
+                    var claims = new List<Claim>();
+                    StuntmanUser user = null;
+
+                    if (authorizationBearerTokenParts.Count() != 2 ||
+                        string.IsNullOrWhiteSpace(accessToken))
                     {
-                        if (!options.AllowBearerTokenPassthrough)
-                        {
-                            context.Response.StatusCode = 403;
-                            await context.HttpContext.Response.WriteAsync(
-                                $"options provided does not include the requested '{accessToken}' user.");
-                        }
+                        context.Response.StatusCode = 400;
+                        context.Response.ReasonPhrase = "Authorization header is not in correct format.";
 
-                        context.Ticket = null;
-                        context.SkipToNextMiddleware();
-                        return;
+                        context.Rejected();
+
+                        return Task.FromResult(false);
                     }
                     else
                     {
-                        claims.Add(new Claim("access_token", accessToken));
+                        user = options.Users
+                            .Where(x => x.AccessToken == accessToken)
+                            .FirstOrDefault();
+
+                        if (user == null)
+                        {
+                            if (!options.AllowBearerTokenPassthrough)
+                            {
+                                context.Response.StatusCode = 403;
+                                context.Response.ReasonPhrase =
+                                    $"options provided does not include the requested '{accessToken}' user.";
+
+                                context.Rejected();
+                            }
+
+                            return Task.FromResult(false);
+                        }
+                        else
+                        {
+                            claims.Add(new Claim("access_token", accessToken));
+                        }
                     }
+
+                    claims.Add(new Claim(ClaimTypes.Name, user.Name));
+                    claims.AddRange(user.Claims);
+
+                    var identity = new ClaimsIdentity(claims, Constants.StuntmanAuthenticationType);
+
+                    context.Validated(identity);
+
+                    var authManager = context.OwinContext.Authentication;
+
+                    authManager.SignIn(identity);
+
+                    options.AfterBearerValidateIdentity?.Invoke(context);
+
+                    return Task.FromResult(true);
                 }
+            }
+        }
 
-                claims.Add(new Claim(ClaimTypes.Name, user.Name));
-                claims.AddRange(user.Claims);
+        private class StuntmanOAuthAccessTokenFormat : ISecureDataFormat<AuthenticationTicket>
+        {
+            public string Protect(AuthenticationTicket data)
+            {
+                throw new NotSupportedException(
+                    "Stuntman does not protect data.");
+            }
 
-                var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, Constants.StuntmanAuthenticationType));
-
-                context.Ticket = new AuthenticationTicket(principal, new AuthenticationProperties(), Constants.StuntmanAuthenticationType);
-
-                context.HandleResponse();
-
-                if (options.AfterBearerValidateIdentity != null)
-                {
-                    options.AfterBearerValidateIdentity(context);
-                }
+            public AuthenticationTicket Unprotect(string protectedText)
+            {
+                return new AuthenticationTicket(
+                    identity: new ClaimsIdentity(),
+                    properties: new AuthenticationProperties());
             }
         }
     }

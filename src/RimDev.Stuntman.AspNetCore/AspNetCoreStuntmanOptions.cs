@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 
-namespace RimDev.Stuntman.Core
+namespace RimDev.Stuntman.Shared
 {
     public partial class StuntmanOptions
     {

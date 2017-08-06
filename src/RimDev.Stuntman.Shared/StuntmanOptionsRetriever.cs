@@ -1,9 +1,9 @@
-﻿using System;
-using System.IO;
-using System.Net.Http;
-
-namespace RimDev.Stuntman.Core
+﻿namespace RimDev.Stuntman.Shared
 {
+    using System;
+    using System.IO;
+    using System.Net.Http;
+
     public class StuntmanOptionsRetriever
     {
         public virtual string GetStringFromLocalFile(Uri uri)

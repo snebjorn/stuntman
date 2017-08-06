@@ -2,7 +2,7 @@
 using System.IO;
 using System.Reflection;
 
-namespace RimDev.Stuntman.Core
+namespace RimDev.Stuntman.Shared
 {
     public partial class Resources
     {

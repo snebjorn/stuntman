@@ -6,7 +6,7 @@ using System.Security.Principal;
 using Newtonsoft.Json.Serialization;
 using System.Reflection;
 
-namespace RimDev.Stuntman.Core
+namespace RimDev.Stuntman.Shared
 {
     public partial class StuntmanOptions
     {

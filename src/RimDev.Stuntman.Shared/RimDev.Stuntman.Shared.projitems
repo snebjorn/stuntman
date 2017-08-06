@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>62e81cac-56ee-4965-8c8c-f33aad4e3ca3</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>RimDev.Stuntman.Shared</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Constants.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Resources.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)StuntmanAlignment.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)StuntmanClaimConverter.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)StuntmanOptions.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)StuntmanOptionsRetriever.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)StuntmanServerResponse.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)StuntmanUser.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)UserPicker.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)assets\stuntman-logo.png" />
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)assets\stuntman.css" />
+  </ItemGroup>
+</Project>

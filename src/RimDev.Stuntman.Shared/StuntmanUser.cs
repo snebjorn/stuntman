@@ -1,10 +1,10 @@
-﻿using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-
-namespace RimDev.Stuntman.Core
+﻿namespace RimDev.Stuntman.Shared
 {
+    using System;
+    using System.Collections.Generic;
+    using System.Security.Claims;
+    using Newtonsoft.Json;
+
     public class StuntmanUser
     {
         [JsonConstructor]
